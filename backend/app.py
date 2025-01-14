@@ -16,7 +16,7 @@ app= Flask(__name__)
 
 app.config["SECRET_KEY"] = "secret_key1234"
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SQLALCHEMY_DATABASE_URI'] ='mysql://root:''@localhost/flaskdb'
+app.config['SQLALCHEMY_DATABASE_URI'] ='mysql://root:''@localhost/pharmadb'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 Session(app)
