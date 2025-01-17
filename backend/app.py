@@ -1,12 +1,15 @@
 import os
 from flask import Flask, redirect,request,jsonify, url_for
+from flask_login import current_user
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 from flask_session import Session
 from flask_login import LoginManager, login_required, logout_user,login_user
-from models import db, User
+from models import db, User, Product
 import re
 from flask_jwt_extended import JWTManager, create_access_token,jwt_required
+from datetime import datetime
+from werkzeug.security import check_password_hash
 from datetime import timedelta
 
 
@@ -40,24 +43,33 @@ def load_user(user_id):
 
 @app.route('/loginUser', methods=['POST'])
 def userLogin():
-    email = request.json["email"]
-    password=request.json["password"]
-    user = User.query.filter_by(email=email).first() 
-    if user:
-        if bcrypt.check_password_hash(user.password, password):
-            
-            login_user(user)
-            access_token = create_access_token(identity = user.id,expires_delta=timedelta(hours=24))
+    email = request.json.get("email")
+    password = request.json.get("password")
     
-            return jsonify({'token' : access_token, 'userId': user.id,'userNom':user.nom + ' ' + user.prenom ,'userEmail':user.email}),200
-        return ({"error":"Le mot de passe est incorrect! Renseigner bien le champ puis réessayer!"}),400
-    return ({"error":"ce utilisateur n'existe pas! Veuillez créer un compte."}),401
+    if not email or not password:
+        return jsonify({"error": "Veuillez fournir une adresse e-mail et un mot de passe."}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if user and bcrypt.check_password_hash(user.password, password): 
+        login_user(user)
+        access_token = create_access_token(identity=user.id, expires_delta=timedelta(hours=24))
+
+        return jsonify({
+            'token': access_token, 
+            'userId': user.id, 
+            'userNom': f"{user.nom} {user.prenom}", 
+            'userEmail': user.email
+        }), 200
+    elif user:
+        return jsonify({"error": "Le mot de passe est incorrect ! Renseignez bien le champ puis réessayez."}), 400
+    else:
+        return jsonify({"error": "Cet utilisateur n'existe pas ! Veuillez créer un compte."}), 401
 
 @app.route('/logout', methods=['POST'])
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('adminLogin'))
+    return redirect(url_for('userLogin'))
 
 @app.route("/signupUser", methods=["POST"])
 #@jwt_required()
@@ -136,6 +148,82 @@ def delete_user(id):
         return {'message': 'utilisateur non trouve'}
 
 
+#Manipulation de la classe produit
+
+@app.route('/registerProduct', methods=["POST"])
+#@jwt_required()  
+def register_product():
+    data = request.get_json()
+    nom = data.get('nom')
+    description = data.get('description')
+    dosage = data.get('dosage')
+    prix = data.get('prix')
+    quantite = data.get('quantite')
+    categorie = data.get('categorie')
+    dateFabrication = data.get('dateFabrication')
+    dateExpiration = data.get('dateExpiration')
+    imageProduit = data.get('imageProduit').encode()
+    favori = data.get('favori')
+
+    if not nom:
+        return jsonify({"error": "Le champ nom du médicament est vide. Veuillez le remplir svp!"}), 405
+
+    product = Product.query.filter_by(nom=nom, categorie=categorie, dosage=dosage, dateExpiration=dateExpiration).first()
+
+    if product:
+        product.quantite += int(quantite)
+    else:
+        product = Product(
+            nom=nom,
+            description=description,
+            dosage=dosage,
+            prix=prix,
+            quantite=quantite,
+            categorie=categorie,
+            dateFabrication=datetime.strptime(dateFabrication, '%Y-%m-%d').strftime('%Y/%m/%d'),
+            dateExpiration=datetime.strptime(dateExpiration, '%Y-%m-%d').strftime('%Y/%m/%d'),
+            imageProduit=imageProduit,
+            favori=favori,
+            user_id=current_user.id  # Associe le produit à l'utilisateur actuel
+        )
+    
+    db.session.add(product)
+    db.session.commit()
+
+    return jsonify(product.json()), 201
+
+
+""""
+@app.route('/registerProduct', methods=["POST"])
+#@jwt_required()
+def register_product():
+    data = request.get_json()
+    nom = request.json['nom']
+    description = request.json['description']
+    dosage = request.json['dosage']
+    prix =request.json['prix']
+    quantite = request.json['quantite']
+    categorie= request.json['categorie']
+    dateFabrication= request.json['dateFabrication']
+    dateExpiration = request.json['dateExpiration']
+    imageProduit = data['imageProduit'].encode()
+    favori = data['favori']
+    
+    product = Product.query.filter_by(nom = nom ,categorie = categorie, dosage = dosage, dateExpiration = dateExpiration).first()
+    
+    if nom == "":
+        return jsonify({"error":"Le champ nom du médicament est vide. Veuillez le remplir svp!"}),405
+    
+    if product:
+        product.quantite+= int(quantite)
+    else:
+    #file=request.files['image']
+        product = Product(nom = data['nom'],description = data['description'],dosage = data['dosage'],prix = data['prix'],quantite = data['quantite'],categorie = data['categorie'],dateFabrication = datetime.strptime(data['dateFabrication'], '%Y-%m-%d').strftime('%Y/%m/%d'),dateExpiration = datetime.strptime(data['dateExpiration'], '%Y-%m-%d').strftime('%Y/%m/%d'),imageProduit = imageProduit,favori = data['favori '], )
+    db.session.add(product)
+    db.session.commit()
+    db.session.flush()
+    return product.json(),201
+"""
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
