@@ -193,38 +193,6 @@ def register_product():
     return jsonify(product.json()), 201
 
 
-""""
-@app.route('/registerProduct', methods=["POST"])
-#@jwt_required()
-def register_product():
-    data = request.get_json()
-    nom = request.json['nom']
-    description = request.json['description']
-    dosage = request.json['dosage']
-    prix =request.json['prix']
-    quantite = request.json['quantite']
-    categorie= request.json['categorie']
-    dateFabrication= request.json['dateFabrication']
-    dateExpiration = request.json['dateExpiration']
-    imageProduit = data['imageProduit'].encode()
-    favori = data['favori']
-    
-    product = Product.query.filter_by(nom = nom ,categorie = categorie, dosage = dosage, dateExpiration = dateExpiration).first()
-    
-    if nom == "":
-        return jsonify({"error":"Le champ nom du médicament est vide. Veuillez le remplir svp!"}),405
-    
-    if product:
-        product.quantite+= int(quantite)
-    else:
-    #file=request.files['image']
-        product = Product(nom = data['nom'],description = data['description'],dosage = data['dosage'],prix = data['prix'],quantite = data['quantite'],categorie = data['categorie'],dateFabrication = datetime.strptime(data['dateFabrication'], '%Y-%m-%d').strftime('%Y/%m/%d'),dateExpiration = datetime.strptime(data['dateExpiration'], '%Y-%m-%d').strftime('%Y/%m/%d'),imageProduit = imageProduit,favori = data['favori '], )
-    db.session.add(product)
-    db.session.commit()
-    db.session.flush()
-    return product.json(),201
-"""
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
     app.run(debug=True)
