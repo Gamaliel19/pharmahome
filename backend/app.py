@@ -72,7 +72,7 @@ def logout():
     return redirect(url_for('userLogin'))
 
 @app.route("/signupUser", methods=["POST"])
-#@jwt_required()
+@jwt_required()
 def register_user():
     email = request.json['email']
     nom = request.json['nom']
@@ -151,7 +151,7 @@ def delete_user(id):
 #Manipulation de la classe produit
 
 @app.route('/registerProduct', methods=["POST"])
-#@jwt_required()  
+@jwt_required()  
 def register_product():
     data = request.get_json()
     nom = data.get('nom')
