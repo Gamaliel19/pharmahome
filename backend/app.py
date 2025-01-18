@@ -1,16 +1,14 @@
 import os
 from flask import Flask, redirect,request,jsonify, url_for
-from flask_login import current_user
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 from flask_session import Session
-from flask_login import LoginManager, login_required, logout_user,login_user
+from flask_login import LoginManager, login_required, logout_user,login_user,current_user
 from models import db, User, Product
 import re
-from flask_jwt_extended import JWTManager, create_access_token,jwt_required
-from datetime import datetime
-from werkzeug.security import check_password_hash
-from datetime import timedelta
+import base64
+from flask_jwt_extended import JWTManager, create_access_token,jwt_required, get_jwt_identity
+from datetime import datetime, timedelta
 
 
 
@@ -73,7 +71,7 @@ def logout():
     return redirect(url_for('userLogin'))
 
 @app.route("/signupUser", methods=["POST"])
-@jwt_required()
+#@jwt_required()
 def register_user():
     email = request.json['email']
     nom = request.json['nom']
@@ -130,7 +128,7 @@ def list():
 
 #obtenir un seul tilisateur
 @app.route('/getUser/<string:id>', methods= ['GET'])
-@jwt_required
+#@jwt_required
 def singleUser(id):
     user = User.query.filter_by(id=id).first()
     if user:
@@ -153,7 +151,7 @@ def delete_user(id):
 
 #Enregistrement d'un nouveau produit
 @app.route('/registerProduct', methods=["POST"])
-@jwt_required()  
+#@jwt_required()  
 def register_product():
     data = request.get_json()
     nom = data.get('nom')
@@ -195,7 +193,64 @@ def register_product():
     return jsonify(product.json()), 201
 
 
-import base64
+# Mise à jour d'un produit existant
+@app.route('/update_product/<string:id>', methods=['PUT'])
+@jwt_required()
+def update_product(id):
+    data = request.get_json()
+    nom = data.get('nom')
+    description = data.get('description')
+    dosage = data.get('dosage')
+    prix = data.get('prix')
+    quantite = data.get('quantite')
+    categorie = data.get('categorie')
+    dateFabrication = data.get('dateFabrication')
+    dateExpiration = data.get('dateExpiration')
+    imageProduit = data.get('imageProduit').encode() if data.get('imageProduit') else None
+    favori = data.get('favori')
+
+    # Récupérer l'ID de l'utilisateur connecté
+    user_id = get_jwt_identity()
+
+    product = Product.query.filter_by(id=id).first()
+
+    if not product:
+        return jsonify({"error": "Produit non trouvé!"}), 404
+
+    if nom:
+        product.nom = nom
+    if description:
+        product.description = description
+    if dosage:
+        product.dosage = dosage
+    if prix:
+        product.prix = prix
+    if quantite:
+        product.quantite = quantite
+    if categorie:
+        product.categorie = categorie
+    if dateFabrication:
+        try:
+            product.dateFabrication = datetime.strptime(dateFabrication, '%Y-%m-%d').strftime('%Y/%m/%d')
+        except ValueError:
+            product.dateFabrication = datetime.strptime(dateFabrication, '%d-%m-%Y').strftime('%Y/%m/%d')
+    if dateExpiration:
+        try:
+            product.dateExpiration = datetime.strptime(dateExpiration, '%Y-%m-%d').strftime('%Y/%m/%d')
+        except ValueError:
+            product.dateExpiration = datetime.strptime(dateExpiration, '%d-%m-%Y').strftime('%Y/%m/%d')
+    if imageProduit:
+        product.imageProduit = imageProduit
+    if favori is not None:
+        product.favori = favori
+
+    # Ajouter l'ID de l'utilisateur connecté qui effectue la mise à jour
+    product.user_id = user_id
+
+    db.session.commit()
+
+    return jsonify(product.json()), 200
+
 
 # Lister les produits
 @app.route('/get_products', methods=['GET'])
