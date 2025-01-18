@@ -69,6 +69,7 @@ def userLogin():
 @login_required
 def logout():
     logout_user()
+    
     return redirect(url_for('userLogin'))
 
 @app.route("/signupUser", methods=["POST"])
@@ -114,7 +115,7 @@ def register_user():
     return {"Message": "Utilisateur créé avec succès!"}
 
 #liste des utilisateurs
-@app.route('/listUser', methods=["GET"])
+@app.route('/getUsers', methods=["GET"])
 def list():
     users = User.query.all()
     liste=[]
@@ -128,7 +129,7 @@ def list():
     return jsonify(liste)
 
 #obtenir un seul tilisateur
-@app.route('/listSingleUser/<string:id>', methods= ['GET'])
+@app.route('/getUser/<string:id>', methods= ['GET'])
 @jwt_required
 def singleUser(id):
     user = User.query.filter_by(id=id).first()
@@ -148,8 +149,9 @@ def delete_user(id):
         return {'message': 'utilisateur non trouve'}
 
 
-#Manipulation de la classe produit
+#########################################   Manipulation de la classe produit  #####################################################
 
+#Enregistrement d'un nouveau produit
 @app.route('/registerProduct', methods=["POST"])
 @jwt_required()  
 def register_product():
@@ -166,7 +168,7 @@ def register_product():
     favori = data.get('favori')
 
     if not nom:
-        return jsonify({"error": "Le champ nom du médicament est vide. Veuillez le remplir svp!"}), 405
+        return jsonify({"error": "Veuillez entrer le nom du produit!"}), 405
 
     product = Product.query.filter_by(nom=nom, categorie=categorie, dosage=dosage, dateExpiration=dateExpiration).first()
 
@@ -192,6 +194,49 @@ def register_product():
 
     return jsonify(product.json()), 201
 
+
+import base64
+
+# Lister les produits
+@app.route('/get_products', methods=['GET'])
+def list_product():
+    products = Product.query.order_by(Product.nom.asc()).all()
+    liste = []
+    for product in products:
+        if product.quantite > 0:
+            try:
+                image_b64 = base64.b64encode(product.imageProduit).decode('utf-8') if product.imageProduit else None
+            except Exception as e:
+                print(f"Erreur lors de la conversion en base64: {e}")
+                image_b64 = None
+
+            data = {
+                'id': product.id,
+                'nom': product.nom,
+                'description': product.description,
+                'dosage': product.dosage,
+                'prix': product.prix,
+                'quantite': product.quantite,
+                'categorie': product.categorie,
+                'date_ajout': product.date_ajout.strftime("%d-%m-%Y"),
+                'dateFabrication': product.dateFabrication.strftime("%d-%m-%Y"),
+                'dateExpiration': product.dateExpiration.strftime("%d-%m-%Y"),
+                'imageProduit': image_b64,
+                'favori': product.favori
+            }
+            liste.append(data)
+    return jsonify(liste)
+
+# Suppression d'un produit
+@app.route('/delete_product/<string:id>', methods=['DELETE'])
+def delete_product(id):
+    product = Product.query.filter_by(id=id).first()
+    if product:
+        db.session.delete(product)
+        db.session.commit()
+        return jsonify({'message': 'Suppression réussie!'})
+    else:
+        return jsonify({'message': "Ce produit n'existe pas dans la base de données."})  # Correction de l'orthographe
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
