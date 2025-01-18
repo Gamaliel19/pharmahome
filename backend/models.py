@@ -4,6 +4,7 @@ from datetime import datetime
 
 db = SQLAlchemy()
 
+#La classe Utilisateur
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -27,7 +28,9 @@ class User(db.Model, UserMixin):
             "password": self.password
         }
 
+#La classe Produit
 class Product(db.Model):
+    __tablename__ = 'products'
     id = db.Column(db.Integer, primary_key=True)
     nom = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(200), nullable=True)
@@ -68,3 +71,20 @@ class Product(db.Model):
             "imageProduit": self.imageProduit.decode('utf-8') if self.imageProduit else None,
             "favori": self.favori
         }
+
+#La classe catégorie
+class Category(db.Model):
+    __tablename__ = 'category' 
+    id = db.Column(db.Integer, primary_key=True) 
+    nom = db.Column(db.String(100), nullable=False) 
+    description = db.Column(db.String(255), nullable=True) 
+    products = db.relationship('Product', backref='category', lazy=True) 
+
+    def __init__(self, nom, description, product_id):
+        self.nom = nom
+        self.description = description
+        self.product_id = product_id
+
+    def json(self): 
+        return { 'id': self.id, 'name': self.name, 'description': self.description, 'products': [product.json() for product in self.products] }
+
